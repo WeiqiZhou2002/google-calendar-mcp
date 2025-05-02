@@ -8,25 +8,25 @@ import { CalendarApi } from "../../calendarAPI.js"
 
 export class CreateEventHandler extends BaseToolHandler {
     async runTool(args: any, auth: OAuth2Client): Promise<CallToolResult> {
-    //   const res = await CalendarApi.createEvent(auth, {
-    //     calendarId: "primary",
-    //     requestBody: {
-    //         summary: args.summary,
-    //         description: args.description,
-    //         start: { dateTime: args.start, timeZone: args.timeZone },
-    //         end: { dateTime: args.end, timeZone: args.timeZone },
-    //         attendees: args.attendees,
-    //         location: args.location,
-    //         colorId: args.colorId,
-    //         reminders: args.reminders,
-    //         recurrence: args.recurrence,
-    //     },
-    //   });
-    //   const event = res.data;
+      const res = await CalendarApi.createEvent(auth, {
+        calendarId: "primary",
+        requestBody: {
+            summary: args.summary,
+            description: args.description,
+            start: { dateTime: args.start, timeZone: args.timeZone },
+            end: { dateTime: args.end, timeZone: args.timeZone },
+            attendees: args.attendees,
+            location: args.location,
+            colorId: args.colorId,
+            reminders: args.reminders,
+            recurrence: args.recurrence,
+        },
+      });
+      const event = res.data;
       return {
                     content: [{
-                        type: "text",
-                        text: `Success`,
+                      type: "text",
+                      text: `Event created: ${event.summary} (${event.id})`,
                     }],
                 };
     }

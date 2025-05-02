@@ -1,14 +1,31 @@
+// src/calendar/CalendarApi.ts
+// Centralised Google‑Calendar wrapper
+// ‑‑ Adds a configurable “max‑future‑days” guard so any create/list/update
+//    touching events further out than the window is denied.  Default = 7 days.
+
 import { google, calendar_v3 } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
+import { parseISO, isAfter, addDays } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 
-const MAX_FUTURE_DAYS = parseInt(
-    process.env.MCP_MAX_FUTURE_DAYS ?? "7",
-    10 /* base */
-  );
-  
-  let maxFutureDays = MAX_FUTURE_DAYS; 
+/**
+ * Read the limit once from env but expose a setter so tests (or admin UI)
+ * can tune it at runtime without rebooting the server.
+ */
+const DEFAULT_LIMIT = parseInt(process.env.MCP_MAX_FUTURE_DAYS ?? "7", 10);
+let maxFutureDays = DEFAULT_LIMIT;
+
+const TRACE = process.env.MCP_TRACE === "1";
 
 export class CalendarApi {
+  /* ------------------------------------------------------------------ */
+  // ≡≡≡  Public helper to mutate the policy at runtime  ≡≡≡
+  static setMaxFutureDays(days: number) {
+    maxFutureDays = days > 0 ? days : 0;   // clamp
+  }
+
+  /* ------------------------------------------------------------------ */
+  private static readonly TZ = "America/Chicago";  // keep UI + server aligned
   private static clientCache = new WeakMap<OAuth2Client, calendar_v3.Calendar>();
 
   /** Get or create a google.calendar client bound to this OAuth2 token */
@@ -25,6 +42,7 @@ export class CalendarApi {
     auth: OAuth2Client,
     params: calendar_v3.Params$Resource$Events$Insert
   ) {
+    this.assertWithinLimit(this.extractStart(params.requestBody), "create-event");
     return this.retry(() => this.getClient(auth).events.insert(params));
   }
 
@@ -32,6 +50,10 @@ export class CalendarApi {
     auth: OAuth2Client,
     params: calendar_v3.Params$Resource$Events$List
   ) {
+    // Guard explicit timeMin; if caller omits it, let Google handle defaults
+    if (params.timeMin) {
+      this.assertWithinLimit(parseISO(params.timeMin as string), "list-events");
+    }
     return this.retry(() => this.getClient(auth).events.list(params));
   }
 
@@ -39,6 +61,8 @@ export class CalendarApi {
     auth: OAuth2Client,
     params: calendar_v3.Params$Resource$Events$Patch
   ) {
+    // Only check if caller supplies a new start time
+    this.assertWithinLimit(this.extractStart(params.requestBody), "update-event");
     return this.retry(() => this.getClient(auth).events.patch(params));
   }
 
@@ -54,12 +78,37 @@ export class CalendarApi {
       }
       throw err;
     } finally {
-        console.log(`[CalendarApi] call took ${Date.now() - t0} ms`);
+      if (TRACE) {
+        const delta = Date.now() - t0;
+        // Write to stderr so stdout stays pure NDJSON for the MCP transport
+        console.error(`[CalendarApi] call took ${delta} ms`);
+      }
     }
   }
 
   private static isRetryable(err: any) {
     const code = err?.code || err?.response?.status;
     return [429, 500, 502, 503, 504].includes(code);
+  }
+
+  /* -------------------- Guard helpers -------------------- */
+
+  /** Convert DTSTART (date or dateTime) field to Date, else null */
+  private static extractStart(body: calendar_v3.Schema$Event | undefined): Date | null {
+    if (!body) return null;
+    if (body.start?.dateTime) return parseISO(body.start.dateTime);
+    if (body.start?.date) return parseISO(body.start.date);
+    return null;
+  }
+
+  /** Throw if the given date is after the permitted horizon */
+  private static assertWithinLimit(date: Date | null, op: string) {
+    if (!date) return; // no date → no check (e.g. listEvents without timeMin)
+    const horizon = addDays(toZonedTime(new Date(), this.TZ), maxFutureDays);
+    if (isAfter(date, horizon)) {
+      const msg = `[CalendarApi] ${op} denied: ${date.toISOString()} beyond ${maxFutureDays}d window`;
+      const err = Object.assign(new Error(msg), { code: "DATE_RANGE_FORBIDDEN" });
+      throw err;
+    }
   }
 }
