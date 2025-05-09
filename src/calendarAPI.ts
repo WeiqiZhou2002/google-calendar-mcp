@@ -1,8 +1,3 @@
-// src/calendar/CalendarApi.ts
-// Centralised Google‑Calendar wrapper
-// ‑‑ Adds a configurable “max‑future‑days” guard so any create/list/update
-//    touching events further out than the window is denied.  Default = 7 days.
-
 import { google, calendar_v3 } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { parseISO, isAfter, addDays } from "date-fns";
@@ -26,7 +21,6 @@ export class CalendarApi {
   }
 
   /* ------------------------------------------------------------------ */
-  private static readonly TZ = "America/Chicago";  // keep UI + server aligned
   private static clientCache = new WeakMap<OAuth2Client, calendar_v3.Calendar>();
 
   /** Get or create a google.calendar client bound to this OAuth2 token */

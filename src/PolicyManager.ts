@@ -5,9 +5,6 @@ import { addDays, isAfter } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { fileURLToPath } from "node:url";
 
-/* -------------------------------------------------------------------------- */
-// Polyfill __dirname / __filename in an ESM world
-/* -------------------------------------------------------------------------- */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -24,7 +21,6 @@ const ENV_PATH = process.env.MCP_POLICY_FILE;
 const FALLBACK_PATH = path.resolve(__dirname,  "..", "src", "policy.yml");
 const CONFIG_PATH = ENV_PATH ?? FALLBACK_PATH;
 
-/* -------------------------------------------------------------------------- */
 function safeLoad(file?: string): PolicyFile {
   if (!file) {
     console.warn("No policy.yml found. Using permissive defaults.");
@@ -65,7 +61,7 @@ export class PolicyManager {
       }
     }
 
-    /* 3. calendar whitelist */
+   //TODO: enforce calendar access
     if (this.policy.calendars?.whitelist && opts.calendarId) {
       if (!this.policy.calendars.whitelist.includes(opts.calendarId)) {
         throw this.err(
@@ -75,7 +71,6 @@ export class PolicyManager {
     }
   }
 
-  /* ------------------- helpers ------------------- */
   private static tz() {
     return this.policy.timezone ?? "America/Chicago";
   }

@@ -1,4 +1,3 @@
-# config/policy.yml
 timezone: America/Chicago         
 actions:
   read:
