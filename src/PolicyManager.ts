@@ -1,8 +1,3 @@
-// src/policy/PolicyManager.ts  – ES‑module safe version
-// YAML‑driven policy loader with flexible path resolution.
-// Works whether the project runs via ts‑node (src/) **or** from the compiled
-// build/ directory, and under "type":"module" package settings (no __dirname).
-
 import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
@@ -24,31 +19,15 @@ interface PolicyFile {
   calendars?: { whitelist?: string[] };
 }
 
-/* -------------------------------------------------------------------------- */
-// 1) Choose config file path in this precedence order:
-//    a) MCP_POLICY_FILE env var (absolute or relative)
-//    b) src/config/policy.yml   – when running directly from TS source
-//    c) build/config/policy.yml – after transpile (dist/build folder)
-//    d) Fallback = no file ⇒ permissive defaults.
-/* -------------------------------------------------------------------------- */
 const ENV_PATH = process.env.MCP_POLICY_FILE;
 
-const CANDIDATES = [
-  path.resolve(__dirname, "..", "config", "policy.yml"),              // src/config/...
-  path.resolve(__dirname, "..", "..", "config", "policy.yml"),        // build/config/...
-];
-
-function firstExisting(paths: string[]): string | undefined {
-  return paths.find(p => fs.existsSync(p));
-}
-
-const FALLBACK_PATH = firstExisting(CANDIDATES);
+const FALLBACK_PATH = path.resolve(__dirname,  "..", "src", "policy.yml");
 const CONFIG_PATH = ENV_PATH ?? FALLBACK_PATH;
 
 /* -------------------------------------------------------------------------- */
 function safeLoad(file?: string): PolicyFile {
   if (!file) {
-    console.warn("⚠️  No policy.yml found. Using permissive defaults.");
+    console.warn("No policy.yml found. Using permissive defaults.");
     return {} as PolicyFile;
   }
   try {
@@ -108,10 +87,7 @@ export class PolicyManager {
     });
   }
 }
-
-/* -------------------------------------------------------------------------- */
-// Hot‑reload the YAML whenever it changes on disk, **if** we actually have one.
-/* -------------------------------------------------------------------------- */
+// see if any change in config file
 if (CONFIG_PATH) {
   fs.watch(CONFIG_PATH, { persistent: false }, () => {
     PolicyManager["policy"] = safeLoad(CONFIG_PATH);

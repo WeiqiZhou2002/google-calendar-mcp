@@ -7,7 +7,7 @@ import { google, calendar_v3 } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { parseISO, isAfter, addDays } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-import { PolicyManager } from "./policy/PolicyManager.js"; 
+import { PolicyManager } from "./PolicyManager.js"; 
 
 /**
  * Read the limit once from env but expose a setter so tests (or admin UI)
@@ -110,14 +110,4 @@ export class CalendarApi {
     return undefined;
   }
 
-  /** Throw if the given date is after the permitted horizon */
-  private static assertWithinLimit(date: Date | null, op: string) {
-    if (!date) return; // no date → no check (e.g. listEvents without timeMin)
-    const horizon = addDays(toZonedTime(new Date(), this.TZ), maxFutureDays);
-    if (isAfter(date, horizon)) {
-      const msg = `[CalendarApi] ${op} denied: ${date.toISOString()} beyond ${maxFutureDays}d window`;
-      const err = Object.assign(new Error(msg), { code: "DATE_RANGE_FORBIDDEN" });
-      throw err;
-    }
-  }
 }
