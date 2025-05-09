@@ -7,6 +7,7 @@ import { google, calendar_v3 } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { parseISO, isAfter, addDays } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
+import { PolicyManager } from "./policy/PolicyManager.js"; 
 
 /**
  * Read the limit once from env but expose a setter so tests (or admin UI)
@@ -42,18 +43,23 @@ export class CalendarApi {
     auth: OAuth2Client,
     params: calendar_v3.Params$Resource$Events$Insert
   ) {
-    this.assertWithinLimit(this.extractStart(params.requestBody), "create-event");
-    return this.retry(() => this.getClient(auth).events.insert(params));
+    const start = this.extractStart(params.requestBody);
+  PolicyManager.enforce("write", {
+    start,
+    calendarId: params.calendarId as string | undefined
+  });
+  return this.retry(() => this.getClient(auth).events.insert(params));
   }
 
   static async listEvents(
     auth: OAuth2Client,
     params: calendar_v3.Params$Resource$Events$List
   ) {
-    // Guard explicit timeMin; if caller omits it, let Google handle defaults
-    if (params.timeMin) {
-      this.assertWithinLimit(parseISO(params.timeMin as string), "list-events");
-    }
+    const min = params.timeMin ? parseISO(params.timeMin as string) : undefined;
+    PolicyManager.enforce("read", {
+      start: min,
+      calendarId: params.calendarId as string | undefined
+    });
     return this.retry(() => this.getClient(auth).events.list(params));
   }
 
@@ -61,8 +67,11 @@ export class CalendarApi {
     auth: OAuth2Client,
     params: calendar_v3.Params$Resource$Events$Patch
   ) {
-    // Only check if caller supplies a new start time
-    this.assertWithinLimit(this.extractStart(params.requestBody), "update-event");
+    const start = this.extractStart(params.requestBody);
+  PolicyManager.enforce("write", {
+    start,
+    calendarId: params.calendarId as string | undefined
+  });
     return this.retry(() => this.getClient(auth).events.patch(params));
   }
 
@@ -94,11 +103,11 @@ export class CalendarApi {
   /* -------------------- Guard helpers -------------------- */
 
   /** Convert DTSTART (date or dateTime) field to Date, else null */
-  private static extractStart(body: calendar_v3.Schema$Event | undefined): Date | null {
-    if (!body) return null;
+  private static extractStart(body: calendar_v3.Schema$Event | undefined): Date | undefined {
+    if (!body) return undefined;
     if (body.start?.dateTime) return parseISO(body.start.dateTime);
     if (body.start?.date) return parseISO(body.start.date);
-    return null;
+    return undefined;
   }
 
   /** Throw if the given date is after the permitted horizon */

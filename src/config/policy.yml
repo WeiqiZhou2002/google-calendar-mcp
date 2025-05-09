@@ -1,0 +1,17 @@
+# config/policy.yml
+timezone: America/Chicago         
+actions:
+  read:
+    enabled: true
+    max_future_days: 3            
+
+  write:                          
+    enabled: true
+    max_future_days: 7
+
+  delete:                         
+    enabled: false
+
+calendars:
+  whitelist:                      # optional - default to all
+    - primary
