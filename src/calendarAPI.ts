@@ -1,6 +1,8 @@
 import { google, calendar_v3 } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { parseISO, isAfter, addDays } from "date-fns";
+import { DeleteEventArgumentsSchema } from "../src/schemas/validators.js";
+import { z } from 'zod';
 import { toZonedTime } from "date-fns-tz";
 import { PolicyManager } from "./PolicyManager.js"; 
 
@@ -65,6 +67,25 @@ export class CalendarApi {
     }
     return this.retry(() => this.getClient(auth).events.list(params));
   }
+
+  static async deleteEvent(
+        auth: OAuth2Client,
+        params: z.infer<typeof DeleteEventArgumentsSchema>
+    ){
+      const calendar = this.getClient(auth);
+      let ev: calendar_v3.Schema$Event | undefined;
+      try {
+        const res = await calendar.events.get({
+          calendarId: params.calendarId,
+          eventId: params.eventId,
+        });
+        ev = res.data;
+      } catch (e) {
+        throw e;
+      }
+        PolicyManager.enforce("delete", {calendarId: params.calendarId, start : this.extractStart(ev)});
+        return this.retry(() => this.getClient(auth).events.delete(params));
+    }
 
   static async updateEvent(
     auth: OAuth2Client,

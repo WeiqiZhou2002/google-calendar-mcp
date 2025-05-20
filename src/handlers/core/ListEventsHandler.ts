@@ -10,13 +10,7 @@ import { CalendarApi } from "../../calendarAPI.js"
 export class ListEventsHandler extends BaseToolHandler {
     async runTool(args: any, oauth2Client: OAuth2Client): Promise<CallToolResult> {
         const validArgs = ListEventsArgumentsSchema.parse(args);
-        const res = await CalendarApi.listEvents(oauth2Client,{
-            calendarId: validArgs.calendarId,
-                timeMin: validArgs.timeMin,
-                timeMax: validArgs.timeMax,
-                singleEvents: true,
-                orderBy: 'startTime',
-        })
+        const res = await CalendarApi.listEvents(oauth2Client,validArgs)
         const events: calendar_v3.Schema$Event[] =  res.data.items ?? [];
         return {
             content: [{
