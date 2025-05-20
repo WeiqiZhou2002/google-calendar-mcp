@@ -42,7 +42,7 @@ export class PolicyManager {
    * Enforce the current YAML rules against an action.  Throws 403‑style
    * Error with code="MCP_POLICY_VIOLATION" if disallowed.
    */
-  static enforce(action: Action, opts: { start?: Date; calendarId?: string }) {
+  static enforce(action: Action, opts: { start?: Date; end?: Date; calendarId?: string }) {
     const rule = this.policy.actions?.[action] ?? {};
 
     /* 1. enabled flag */
@@ -58,6 +58,22 @@ export class PolicyManager {
           `${action} denied: ${opts.start.toISOString()} beyond ` +
           `${rule.max_future_days}‑day window`
         );
+      }
+      
+      if(opts.end !== undefined && isAfter(opts.end,horizon)){
+        if (action === "read") {
+          const err = Object.assign(
+            new Error(`${action} end beyond horizon`),
+            {
+              code: "MCP_READ_CLIPPED",
+              horizon,
+              httpStatus: 400,
+            }
+          );
+          throw err;
+        } else {
+          throw this.err(`${action} denied: end beyond ${rule.max_future_days}‑day window`);
+        }
       }
     }
 

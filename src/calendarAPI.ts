@@ -50,10 +50,19 @@ export class CalendarApi {
     params: calendar_v3.Params$Resource$Events$List
   ) {
     const min = params.timeMin ? parseISO(params.timeMin as string) : undefined;
-    PolicyManager.enforce("read", {
+    const max = params.timeMax ? parseISO(params.timeMax as string) : undefined;
+    try {PolicyManager.enforce("read", {
       start: min,
+      end: max,
       calendarId: params.calendarId as string | undefined
     });
+    } catch (e: any) {
+      if (e.code === "MCP_READ_CLIPPED") {
+        params.timeMax = e.horizon.toISOString();
+      } else {
+        throw e;
+      }
+    }
     return this.retry(() => this.getClient(auth).events.list(params));
   }
 
