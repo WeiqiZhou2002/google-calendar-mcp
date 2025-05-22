@@ -67,6 +67,53 @@ Along with the normal capabilities you would expect for a calendar integration y
    - Ensure the file contains credentials for a "Desktop app".
    - Alternatively, copy the provided template file: `cp gcp-oauth.keys.example.json gcp-oauth.keys.json` and populate it with your credentials from the Google Cloud Console.
 
+## Policy Configuration (`policy.yml`)
+
+The Google‑Calendar MCP server has a **pluggable policy layer** that lets you whitelist calendars and restrict **read / write / delete** operations to specific time windows.  
+By editing one YAML file you can tighten or relax the server’s behaviour without touching TypeScript.
+
+### 1  Where does the file live?
+
+| Location                       | How to change                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| **Default** → `src/config/policy.yml` | No action needed; the server loads it automatically.                      |
+| Custom path                    | Set an env‑var before you start the server:<br>`export MCP_POLICY_FILE=/path/to/my_policy.yml` |
+
+> **Hot‑reload** The file is watched; save a change and it takes effect within a second (no restart).
+
+### 2  YAML schema
+
+```yaml
+# src/config/policy.yml
+timezone: America/Chicago        # Single source of truth for DST handling
+
+actions:
+  read:
+    enabled: true
+    max_future_days: 3           # deny any list/freeBusy that ends > 3 days out
+
+  write:                         # covers create/update/patch
+    enabled: true
+    max_future_days: 7
+
+  delete:
+    enabled: false               # block deletes altogether (override if you wish)
+
+calendars:
+  whitelist:
+    - primary
+    - personal_projects@group.calendar.google.com
+```
+
+*If no YAML is found the server prints a warning and falls back to permissive defaults (all actions allowed, no time limits).*
+
+
+### 3  What happens if a request violates the policy?
+
+* The MCP server throws an error with `code: "MCP_POLICY_VIOLATION"` (HTTP 403).  
+  *Example message:* `write denied: 2025‑07‑01 beyond 7‑day window`.
+* LLM clients can catch that error and ask the user for a new time range.
+
 ## Available Scripts
 
 - `npm run build` - Build the TypeScript code (compiles `src` to `build`)

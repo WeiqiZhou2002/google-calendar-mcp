@@ -2,7 +2,7 @@ timezone: America/Chicago
 actions:
   read:
     enabled: true
-    max_future_days: 3            
+    max_future_days: 30       
 
   write:                          
     enabled: true
