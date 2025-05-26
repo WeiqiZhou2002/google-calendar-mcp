@@ -214,6 +214,35 @@ Tests mock external dependencies (Google API, filesystem) to ensure isolated tes
 
 if you are a developer want to contribute this repository, please kindly take a look at [Architecture Overview](docs/architecture.md) before contributing
 
+## Debug with Breakpoint
+
+### 1  Start the server in debug mode
+
+```bash
+npx @modelcontextprotocol/inspector -- node --inspect build/index.js
+```
+
+This launches your MCP server **and** Node’s V8 Inspector on port `9229`.
+
+
+---
+
+### 2  Open Chrome DevTools
+
+1. In the address bar, type `chrome://inspect` and press **Enter**.  
+2. Click **Configure…** → ensure `localhost:9229` is listed → **Done**.
+
+---
+
+### 3  Attach and set breakpoints
+
+1. Under **Remote Target**, find your script and click **inspect**.  
+2. A DevTools window opens on the **Sources** panel.  
+3. Browse to any `.js`/`.ts` file and click the gutter to drop breakpoints.  
+4. Interact with your server—execution stops when it hits a breakpoint.
+
+---
+
 ## License
 
 MIT
