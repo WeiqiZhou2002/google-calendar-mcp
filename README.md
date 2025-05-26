@@ -219,7 +219,7 @@ if you are a developer want to contribute this repository, please kindly take a 
 ### 1  Start the server in debug mode
 
 ```bash
-npx @modelcontextprotocol/inspector -- node --inspect build/index.js
+npx @modelcontextprotocol/inspector node --inspect build/index.js
 ```
 
 This launches your MCP server **and** Node’s V8 Inspector on port `9229`.
